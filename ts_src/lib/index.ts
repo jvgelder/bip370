@@ -3,14 +3,30 @@
  * @see https://github.com/bitcoin/bips/blob/master/bip-0370.mediawiki
  */
 
-// Core class
-import { PsbtV2Base } from './psbtv2.js';
+// Mixins
+import { WithDeSerialization } from './features/deserialization.js';
+import { WithSerialization } from './features/serialization.js';
 
-// Re-export base class for extension
-export { PsbtV2Base };
+import { Updater as PsbtRoles } from './roles';
+// Add features as mixins
+export const PSBTv2Builder = WithDeSerialization(WithSerialization(PsbtRoles));
 
+// Types
+export type { InputData, OutputData } from './roles/psbtConstructor.js';
+export type { InputUpdateData, OutputUpdateData } from './roles/updater.js';
 export type {
+  WitnessUtxo,
   Bip32Derivation,
   TapBip32Derivation,
-  TapLeafScript,
-} from './fields';
+} from './fields.js';
+
+// Constants
+export {
+  InputTypes,
+  OutputTypes,
+  GlobalTypes,
+  SIGHASH_TYPES,
+  MODIFIABLE_FLAGS,
+  SCRIPT_TYPE,
+  type SighashType,
+} from './typefields.js';

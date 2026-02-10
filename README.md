@@ -20,6 +20,9 @@ ts_src/lib/
 │   └── index.ts              # Re-exports all roles
 │
 ├── features/                 # Core PSBT functionality mixins
+│   ├── serialization.ts      # toBuffer, toBase64, toHex
+│   ├── deserialization.ts    # fromBuffer, fromBase64
+│   └── helper.ts             # PsbtConstructor type definition
 │
 ├── psbtv2.ts                 # Base PsbtV2 class
 ├── fields.ts                 # Field descriptors & validation
@@ -61,6 +64,21 @@ class ValidationErrorContainer extends Error {
 ## Example
 
 ```typescript
+const psbt = PSBTv2Builder.fromBase64(validVectors[0].b64);
+
+psbt.addInput({
+    hash: 'c85f81844094f9f0eec1e41f8d63e0a99e9f73dc725d7319871c9c4121d90a0b',
+    index: 0,
+    requiredHeightLockTime: 100000,
+})
+
+psbt.addOutput({
+    script: fromHex('0014c430f64c4756da310dbd1a085572ef299926272c'),
+    value: BigInt(800000000),
+});
+
+// Export PSBT
+psbt.toHex()
 ```
 
 ## LICENSE [MIT](LICENSE)

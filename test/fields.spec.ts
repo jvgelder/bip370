@@ -14,9 +14,67 @@ import {
   InputTypes,
   OutputTypes,
 } from '../ts_src/lib/typefields.js';
-import { fromHex } from 'uint8array-tools';
+import { validVectors } from './testvectors.js';
+import {
+  deserializeWitnessUtxo,
+  keyFromType,
+  parseKey,
+  serializeWitnessUtxo,
+} from '../ts_src/lib/utils.js';
+import { PSBTv2Builder } from '../ts_src/lib/index.js';
+import { fromHex, toHex } from 'uint8array-tools';
 
 describe('Field tests', () => {
+  // === Round-trip tests from vectors ===
+  for (const testVector of validVectors) {
+    const psbt: PSBTv2Builder = PSBTv2Builder.fromBase64(testVector.b64);
+
+    // BIP32 Derivation - filter by prefix since key includes pubkey
+    const bip32Prefix = keyFromType(OutputTypes.BIP32_DERIVATION);
+
+    for (let index = 0; index < psbt.outputCount; index++) {
+      const outputMap = psbt.outputMaps[index];
+
+      const bip32Entries = [...outputMap.entries()].filter(
+        ([key, _]: [string, Uint8Array]) => key.startsWith(bip32Prefix),
+      );
+
+      for (const [key, value] of bip32Entries) {
+        it(`Bip32 Serialization: ${testVector.name} output ${index}`, () => {
+          const { data: pubkey } = parseKey(key);
+          const decoded = deserializeBip32Derivation(value, pubkey);
+          const reencoded = serializeBip32Derivation(decoded);
+
+          assert.deepStrictEqual(reencoded, value);
+          assert.deepStrictEqual(decoded.pubkey, pubkey);
+        });
+      }
+    }
+
+    // Witness UTXO
+    const witnessUtxoKey = keyFromType(InputTypes.WITNESS_UTXO);
+
+    for (let index = 0; index < psbt.inputCount; index++) {
+      const inputMap = psbt.inputMaps[index];
+
+      if (inputMap.has(witnessUtxoKey)) {
+        it(`Witness UTXO Deserialization: ${testVector.name} input ${index}`, () => {
+          const raw = inputMap.get(witnessUtxoKey)!;
+          const decoded = deserializeWitnessUtxo(raw);
+
+          const expected = testVector.decoded?.inputs[index].witnessUtxo;
+          if (expected) {
+            assert.strictEqual(decoded.value, BigInt(expected.value));
+            assert.strictEqual(toHex(decoded.script), expected.script);
+          }
+
+          const reencoded = serializeWitnessUtxo(decoded.script, decoded.value);
+          assert.deepStrictEqual(reencoded, raw);
+        });
+      }
+    }
+  }
+
   // === InputField Encode/Decode Tests ===
   describe('InputField encode/decode', () => {
     it('PREVIOUS_TXID', () => {
