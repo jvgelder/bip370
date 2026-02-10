@@ -335,7 +335,8 @@ ts_src/lib/
 │   ├── combiner.ts           # WithCombiner
 │   ├── deserialization.ts    # WithDeSerialization
 │   ├── helper.ts             # MixinConstructorHelper type
-│   └── serialization.ts      # WithSerialization
+│   ├── serialization.ts      # WithSerialization
+│   └── txSerializer.ts       # WithTxSerialization
 │
 ├── fields/                   # bip370/fields — field descriptors
 │   ├── index.ts
@@ -346,6 +347,7 @@ ts_src/lib/
 │   └── global.ts             # GlobalTypes, GlobalField descriptors
 │
 ├── roles/                    # bip370/roles — BIP-370 role implementations
+│   ├── extractor.ts
 │   ├── finalizer.ts          # Constructs final scriptSig/witness
 │   ├── index.ts              # Re-exports all roles
 │   ├── psbyconstructor.ts    # Creates inputs and outputs
@@ -366,6 +368,7 @@ ts_src/lib/
 ├── errors.ts                 # bip370/errors — ValidationErrorContainer
 ├── index.ts                  # bip370 — PSBTv2Builder, enums, parseBitcoinTransaction
 ├── psbtv2.ts                 # PsbtV2Base — key-value maps, structural validation
+├── txDeserializer.ts         # parseBitcoinTransaction
 └── types.ts                  # SIGHASH_TYPES
 ```
 
