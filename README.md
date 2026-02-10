@@ -11,6 +11,53 @@ WORK IN PROGRESS not ready for use!
 
 This library is separate as an attempt to separate Bitcoin specific logic from the encoding format.
 
+# Directory Structure
+
+```
+ts_src/lib/
+├── roles/                    # BIP-370 role implementations
+│   ├── constructor.ts        # Creates inputs and outputs
+│   └── index.ts              # Re-exports all roles
+│
+├── features/                 # Core PSBT functionality mixins
+│
+├── psbtv2.ts                 # Base PsbtV2 class
+├── fields.ts                 # Field descriptors & validation
+├── typefields.ts             # Type constants (InputTypes, OutputTypes, etc.)
+├── utils.ts                  # Encoding/decoding utilities
+└── bufferutils.ts            # BufferReader/BufferWriter helpers (copy of buffer utils from bitcoinjs)
+```
+
+# Core Components
+
+## fields.ts
+
+```typescript
+// Field descriptor interface
+interface Field<T> {
+  type: number;
+  validate: (data: T) => ValidationErrorEntry | undefined;
+  encode: (data: T) => { value: Uint8Array; keyData?: Uint8Array };
+  encodeKey: (keyData?: Uint8Array) => string;
+  decode: (value: Uint8Array, keyData?: Uint8Array) => T;
+}
+
+// Field collections
+InputField[InputTypes.WITNESS_UTXO]   // Access input field descriptors
+OutputField[OutputTypes.AMOUNT]        // Access output field descriptors
+GlobalField[GlobalTypes.TX_VERSION]    // Access global field descriptors
+
+// Validation helper - validates, encodes, and generates key in one call
+prepareField(field, data) → { key, value }
+
+// Error container with message generation
+class ValidationErrorContainer extends Error {
+  errors: ValidationErrorEntry[];
+  addError(error): void;
+  addErrors(errors): void;
+}
+```
+
 ## Example
 
 ```typescript
