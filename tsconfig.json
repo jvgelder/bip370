@@ -1,0 +1,13 @@
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "src/esm",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "declaration": true,
+        "declarationMap": true,
+        "lib": ["ES2020", "DOM"],
+        "target": "ES2020"
+    }
+}
