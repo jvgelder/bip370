@@ -8,8 +8,12 @@ import { WithDeSerialization } from './features/deserialization.js';
 import { WithSerialization } from './features/serialization.js';
 
 import { Finalizer as PsbtRoles } from './roles/finalizer';
+
+import { WithCombiner } from './features/combiner';
 // Add features as mixins
-export const PSBTv2Builder = WithDeSerialization(WithSerialization(PsbtRoles));
+export const PSBTv2Builder = WithCombiner(
+  WithDeSerialization(WithSerialization(PsbtRoles)),
+);
 
 // Types
 export type { InputData, OutputData } from './roles/psbtConstructor.js';
