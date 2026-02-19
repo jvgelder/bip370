@@ -7,7 +7,7 @@
 import { WithDeSerialization } from './features/deserialization.js';
 import { WithSerialization } from './features/serialization.js';
 
-import { Updater as PsbtRoles } from './roles';
+import { Signer as PsbtRoles } from './roles/signer';
 // Add features as mixins
 export const PSBTv2Builder = WithDeSerialization(WithSerialization(PsbtRoles));
 
