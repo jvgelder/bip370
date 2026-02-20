@@ -19,6 +19,7 @@ ts_src/lib/
 │   ├── constructor.ts        # Creates inputs and outputs
 │   ├── updater.ts            # Adds scripts, derivations, UTXOs
 │   ├── signer.ts             # Adds signatures (ECDSA & Schnorr)
+│   ├── finalizer.ts          # Constructs final scriptSig/witness
 │   └── index.ts              # Re-exports all roles
 │
 ├── features/                 # Core PSBT functionality mixins
