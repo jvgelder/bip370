@@ -17,6 +17,7 @@ import {
   readUInt32LE,
 } from './utils';
 import { GlobalField, InputField, ValidationErrorContainer } from './fields.js';
+import { fromHex } from 'uint8array-tools';
 
 /**
  * PSBTv2 Base Class
@@ -720,5 +721,109 @@ export class PsbtV2Base {
       }
     }
     return false;
+  }
+
+  /**
+   * Get all input entries of a given type (for fields with keyData like PARTIAL_SIG)
+   * @param index - Input index
+   * @param type - The input type to filter by
+   * @returns Array of keyData and value pairs
+   */
+  getInputsOfType(
+    index: number,
+    type: number,
+  ): Array<{ keyData: Uint8Array; value: Uint8Array }> {
+    if (index < 0 || index >= this.inputCount) {
+      return [];
+    }
+
+    const results: Array<{ keyData: Uint8Array; value: Uint8Array }> = [];
+    const inputMap = this._inputMaps[index];
+
+    for (const [keyHex, value] of inputMap.entries()) {
+      const keyBytes = fromHex(keyHex);
+      if (keyBytes[0] === type && keyBytes.length > 1) {
+        results.push({ keyData: keyBytes.slice(1), value });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Check if an input has any entries of a given type
+   * @param index - Input index
+   * @param type - The input type to check for
+   */
+  hasInputOfType(index: number, type: number): boolean {
+    if (index < 0 || index >= this.inputCount) {
+      return false;
+    }
+
+    const inputMap = this._inputMaps[index];
+
+    for (const keyHex of inputMap.keys()) {
+      const keyBytes = fromHex(keyHex);
+      if (keyBytes[0] === type) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Delete all input entries of a given type
+   * @param index - Input index
+   * @param type - The input type to delete
+   * @returns Number of entries deleted
+   */
+  deleteInputsOfType(index: number, type: number): number {
+    if (index < 0 || index >= this.inputCount) {
+      return 0;
+    }
+
+    const inputMap = this._inputMaps[index];
+    const keysToDelete: string[] = [];
+
+    for (const keyHex of inputMap.keys()) {
+      const keyBytes = fromHex(keyHex);
+      if (keyBytes[0] === type) {
+        keysToDelete.push(keyHex);
+      }
+    }
+
+    for (const keyHex of keysToDelete) {
+      inputMap.delete(keyHex);
+    }
+
+    return keysToDelete.length;
+  }
+
+  /**
+   * Get all output entries of a given type (for fields with keyData)
+   * @param index - Output index
+   * @param type - The output type to filter by
+   * @returns Array of keyData and value pairs
+   */
+  getOutputsOfType(
+    index: number,
+    type: number,
+  ): Array<{ keyData: Uint8Array; value: Uint8Array }> {
+    if (index < 0 || index >= this.outputCount) {
+      return [];
+    }
+
+    const results: Array<{ keyData: Uint8Array; value: Uint8Array }> = [];
+    const outputMap = this._outputMaps[index];
+
+    for (const [keyHex, value] of outputMap.entries()) {
+      const keyBytes = fromHex(keyHex);
+      if (keyBytes[0] === type && keyBytes.length > 1) {
+        results.push({ keyData: keyBytes.slice(1), value });
+      }
+    }
+
+    return results;
   }
 }
