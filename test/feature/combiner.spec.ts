@@ -8,8 +8,8 @@ import {
   validVectors,
 } from '../testvectors.js';
 import { PSBTv2Builder } from '../../ts_src/lib/index.js';
-import { InputData } from '../../ts_src/lib/index.js';
 import { fromBase64 } from 'uint8array-tools';
+import { InputData } from '../../ts_src/lib/roles/index.js';
 
 // ============================================================================
 // Helpers

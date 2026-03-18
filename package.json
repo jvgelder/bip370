@@ -1,7 +1,7 @@
 {
     "name": "bip370",
     "version": "0.0.1",
-    "description": "Bip370 PSBTv2 implementation",
+    "description": "BIP-370 PSBTv2 data structure library",
     "main": "src/cjs/lib/index.cjs",
     "module": "src/esm/lib/index.js",
     "browser": "src/esm/lib/index.js",
@@ -13,6 +13,41 @@
             "import": "./src/esm/lib/index.js",
             "require": "./src/cjs/lib/index.cjs",
             "default": "./src/esm/lib/index.js"
+        },
+        "./roles": {
+            "types": "./src/types/lib/roles/index.d.ts",
+            "browser": "./src/esm/lib/roles/index.js",
+            "import": "./src/esm/lib/roles/index.js",
+            "require": "./src/cjs/lib/roles/index.cjs",
+            "default": "./src/esm/lib/roles/index.js"
+        },
+        "./features": {
+            "types": "./src/types/lib/features/index.d.ts",
+            "browser": "./src/esm/lib/features/index.js",
+            "import": "./src/esm/lib/features/index.js",
+            "require": "./src/cjs/lib/features/index.cjs",
+            "default": "./src/esm/lib/features/index.js"
+        },
+        "./fields": {
+            "types": "./src/types/lib/fields/index.d.ts",
+            "browser": "./src/esm/lib/fields/index.js",
+            "import": "./src/esm/lib/fields/index.js",
+            "require": "./src/cjs/lib/fields/index.cjs",
+            "default": "./src/esm/lib/fields/index.js"
+        },
+        "./utils": {
+            "types": "./src/types/lib/utils/index.d.ts",
+            "browser": "./src/esm/lib/utils/index.js",
+            "import": "./src/esm/lib/utils/index.js",
+            "require": "./src/cjs/lib/utils/index.cjs",
+            "default": "./src/esm/lib/utils/index.js"
+        },
+        "./errors": {
+            "types": "./src/types/lib/errors.d.ts",
+            "browser": "./src/esm/lib/errors.js",
+            "import": "./src/esm/lib/errors.js",
+            "require": "./src/cjs/lib/errors.cjs",
+            "default": "./src/esm/lib/errors.js"
         }
     },
     "type": "module",
@@ -89,7 +124,7 @@
     },
     "peerDependenciesMeta": {
         "bitcoinjs-lib": {
-            "optional": false
+            "optional": true
         }
     },
     "author": "Jasper van Gelder",
@@ -110,19 +145,19 @@
                 "src/types/lib/index.d.ts"
             ],
             "roles": [
-                "src/esm/lib/roles/index.d.ts"
+                "src/types/lib/roles/index.d.ts"
             ],
             "features": [
-                "src/esm/lib/features/index.d.ts"
+                "src/types/lib/features/index.d.ts"
             ],
             "fields": [
-                "src/esm/lib/fields/index.d.ts"
+                "src/types/lib/fields/index.d.ts"
             ],
             "utils": [
-                "src/esm/lib/utils/index.d.ts"
+                "src/types/lib/utils/index.d.ts"
             ],
             "errors": [
-                "src/esm/lib/errors.d.ts"
+                "src/types/lib/errors.d.ts"
             ]
         }
     }

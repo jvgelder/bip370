@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import * as assert from 'assert';
 import { validVectors } from './testvectors.js';
 import { fromBase64, fromHex } from 'uint8array-tools';
-import { MODIFIABLE_FLAGS } from '../ts_src/lib/typefields.js';
+import { MODIFIABLE_FLAGS } from '../ts_src/lib/types.js';
 import { PSBTv2Builder } from '../ts_src/lib/index.js';
 
 describe('PSBTv2Builder Unit Tests', () => {

@@ -7,13 +7,7 @@
 import * as assert from 'node:assert';
 import { describe, it, beforeEach } from 'mocha';
 import { fromHex } from 'uint8array-tools';
-import {
-  InputUpdateData,
-  OutputData,
-  PSBTv2Builder,
-} from '../../ts_src/lib/index.js';
-import { InputTypes } from '../../ts_src/lib/typefields.js';
-import { InputData } from '../../ts_src/lib/index.js';
+import { PSBTv2Builder } from '../../ts_src/lib/index.js';
 import {
   BIP174_PUBKEYS,
   BIP174_SIGNATURES,
@@ -23,6 +17,12 @@ import {
   TAPROOT_PUBKEYS,
   TEST_TXIDS,
 } from '../testvectors.js';
+import { InputTypes } from '../../ts_src/lib/fields/input.js';
+import {
+  InputData,
+  InputUpdateData,
+  OutputData,
+} from '../../ts_src/lib/roles/index.js';
 
 // ============================================================================
 // Helpers

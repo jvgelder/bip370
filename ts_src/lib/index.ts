@@ -1,6 +1,15 @@
 /**
- * BIP-370 PSBTv2 Library
- * @see https://github.com/bitcoin/bips/blob/master/bip-0370.mediawiki
+ * bip370 — PSBTv2 data structure library
+ *
+ * Subpath imports (recommended for tree-shaking):
+ *   import { Updater }               from 'bip370/roles';
+ *   import { WithSerialization }     from 'bip370/features';
+ *   import { InputField }            from 'bip370/fields';
+ *   import { keyFromType }           from 'bip370/utils';
+ *   import { ValidationErrorContainer } from 'bip370/errors';
+ *
+ * Or import everything from the root for convenience:
+ *   import { PSBTv2Builder }         from 'bip370';
  */
 
 // Mixins
@@ -15,22 +24,13 @@ export const PSBTv2Builder = WithCombiner(
   WithDeSerialization(WithSerialization(PsbtRoles)),
 );
 
-// Types
-export type { InputData, OutputData } from './roles/psbtConstructor.js';
-export type { InputUpdateData, OutputUpdateData } from './roles/updater.js';
-export type {
-  WitnessUtxo,
-  Bip32Derivation,
-  TapBip32Derivation,
-} from './fields.js';
+// === Base class =============================================================
+export { PsbtV2Base } from './psbtv2.js';
 
-// Constants
+// === Enums & constants ======================================================
 export {
-  InputTypes,
-  OutputTypes,
-  GlobalTypes,
   SIGHASH_TYPES,
   MODIFIABLE_FLAGS,
-  SCRIPT_TYPE,
   type SighashType,
-} from './typefields.js';
+  type ModifiableFlagsType,
+} from './types.js';

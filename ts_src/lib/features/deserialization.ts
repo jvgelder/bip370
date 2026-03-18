@@ -2,11 +2,11 @@
  * PSBT Deserialization Mixin
  * Provides fromBuffer and fromBase64 static methods
  */
-import { PSBT_MAGIC_BYTES } from '../typefields.js';
+import { PSBT_MAGIC_BYTES } from '../types.js';
 import type { MixinConstructorHelper } from './helper.js';
 import { compare, toHex, fromBase64, fromHex } from 'uint8array-tools';
 import { BufferReader } from '../../bufferutils.js';
-import { ValidationErrorContainer } from '../fields';
+import { ValidationErrorContainer } from '../errors';
 
 /**
  * Mixin that adds deserialization capabilities to a PSBT class

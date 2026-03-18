@@ -3,12 +3,14 @@
  * Provides combine method to merge multiple PSBTs
  * @see BIP-174 Combiner Role
  */
-import { GlobalTypes, InputTypes, OutputTypes } from '../typefields.js';
-import { ValidationErrorContainer } from '../fields.js';
+import { ValidationErrorContainer } from '../errors.js';
 import type { MixinConstructorHelper } from './helper.js';
 import type { PsbtV2Base } from '../psbtv2.js';
-import { parseKey } from '../utils';
+import { parseKey } from '../utils/psbtkey.js';
 import { compare } from 'uint8array-tools';
+import { GlobalTypes } from '../fields/global';
+import { InputTypes } from '../fields/input';
+import { OutputTypes } from '../fields/output';
 
 /**
  * Mixin that adds PSBT combining capabilities

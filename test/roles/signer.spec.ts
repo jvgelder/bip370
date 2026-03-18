@@ -19,11 +19,8 @@ import {
   TEST_TXIDS,
 } from '../testvectors.js';
 import { PSBTv2Builder } from '../../ts_src/lib/index.js';
-import {
-  MODIFIABLE_FLAGS,
-  SIGHASH_TYPES,
-} from '../../ts_src/lib/typefields.js';
-import { InputData } from '../../ts_src/lib/index.js';
+import { MODIFIABLE_FLAGS, SIGHASH_TYPES } from '../../ts_src/lib/types.js';
+import { InputData } from '../../ts_src/lib/roles/index.js';
 
 // ============================================================================
 // Helpers

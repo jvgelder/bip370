@@ -2,16 +2,14 @@
  * BIP-370 Constructor Role
  * Creates inputs and outputs with required PSBTv2 fields
  */
-import { InputTypes, OutputTypes } from '../typefields.js';
-import {
-  InputField,
-  OutputField,
-  collectField,
-  ValidationErrorContainer,
-} from '../fields.js';
-import { keyFromType, reverseBuffer } from '../utils.js';
 import { fromHex } from 'uint8array-tools';
 import { PsbtV2Base } from '../psbtv2';
+import { ValidationErrorContainer } from '../errors';
+import { reverseBuffer } from '../utils/buffer';
+import { keyFromType } from '../utils/psbtkey';
+import { collectField } from '../fields/helper';
+import { InputField, InputTypes } from '../fields/input';
+import { OutputField, OutputTypes } from '../fields/output';
 
 /**
  * Input data for adding inputs (required fields only)

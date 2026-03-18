@@ -1,13 +1,13 @@
 import { describe, it } from 'mocha';
 import { validVectors } from '../testvectors.js';
+import { PSBTv2Builder } from '../../ts_src/lib/index.js';
+import assert from 'assert';
+import { fromHex } from 'uint8array-tools';
 import {
   InputUpdateData,
   OutputUpdateData,
-  PSBTv2Builder,
-} from '../../ts_src/lib/index.js';
-import assert from 'assert';
-import { deserializeBip32Derivation } from '../../ts_src/lib/fields.js';
-import { fromHex } from 'uint8array-tools';
+} from '../../ts_src/lib/roles/index.js';
+import { deserializeBip32Derivation } from '../../ts_src/lib/utils/index.js';
 
 describe('BIP-370 Updater', () => {
   it(`Valid: ${validVectors[0].name}`, () => {

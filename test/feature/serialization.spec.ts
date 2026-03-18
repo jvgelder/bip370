@@ -4,9 +4,8 @@ import assert from 'assert';
 import { PSBTv2Builder } from '../../ts_src/lib';
 import { fromHex } from 'uint8array-tools';
 import { WithDeSerialization } from '../../ts_src/lib/features/deserialization.js';
-import { GlobalField } from '../../ts_src/lib/fields.js';
-import { GlobalTypes } from '../../ts_src/lib/typefields.js';
 import { PsbtV2Base } from '../../ts_src/lib/psbtv2.js';
+import { GlobalField, GlobalTypes } from '../../ts_src/lib/fields/global.js';
 
 describe('PSBTv2 Serialization', () => {
   for (const v of validVectors) {

@@ -3,21 +3,16 @@
  * Pure key-value container - role-specific logic is in roles/ folder
  * @see https://github.com/bitcoin/bips/blob/master/bip-0370.mediawiki
  */
-import {
-  GlobalTypes,
-  InputTypes,
-  MODIFIABLE_FLAGS,
-  OutputTypes,
-} from './typefields.js';
-import {
-  assertUInt32,
-  cloneMap,
-  keyFromType,
-  parseKey,
-  readUInt32LE,
-} from './utils';
-import { GlobalField, InputField, ValidationErrorContainer } from './fields.js';
+import { MODIFIABLE_FLAGS } from './types.js';
+
 import { fromHex } from 'uint8array-tools';
+import { keyFromType, parseKey } from './utils/psbtkey';
+import { ValidationErrorContainer } from './errors';
+import { GlobalField, GlobalTypes } from './fields/global';
+import { assertUInt32 } from './utils/validation';
+import { cloneMap } from './utils/map';
+import { InputField, InputTypes } from './fields/input';
+import { OutputTypes } from './fields/output';
 
 /**
  * PSBTv2 Base Class
@@ -563,7 +558,8 @@ export class PsbtV2Base {
       // LockTime RANGE validation
       const timeLock = this.getInput(i, InputTypes.REQUIRED_TIME_LOCKTIME);
       if (timeLock) {
-        const value = readUInt32LE(timeLock);
+        const value =
+          InputField[InputTypes.REQUIRED_TIME_LOCKTIME].decode(timeLock);
         if (value < 500000000) {
           errorContainer.addError({
             field: 'REQUIRED_TIME_LOCKTIME',

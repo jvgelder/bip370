@@ -2,11 +2,11 @@
  * PSBT Serialization Mixin
  * Provides toBuffer and toBase64 methods
  */
-import { PSBT_MAGIC_BYTES } from '../typefields.js';
+import { PSBT_MAGIC_BYTES } from '../types.js';
 import * as varuint from 'varuint-bitcoin';
 import type { MixinConstructorHelper } from './helper.js';
 import { concat, fromHex, toHex, toBase64 } from 'uint8array-tools';
-import { sortKeyVals } from '../utils';
+import { sortKeyVals } from '../utils/psbtkey.js';
 
 /**
  * Mixin that adds serialization capabilities to a PSBT class

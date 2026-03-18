@@ -1,28 +1,23 @@
 import { describe, it } from 'mocha';
 import assert from 'assert';
-import {
-  InputField,
-  OutputField,
-  GlobalField,
-  deserializeBip32Derivation,
-  serializeBip32Derivation,
-  deserializeTapBip32Derivation,
-  serializeTapBip32Derivation,
-} from '../ts_src/lib/fields.js';
-import {
-  GlobalTypes,
-  InputTypes,
-  OutputTypes,
-} from '../ts_src/lib/typefields.js';
+
 import { validVectors } from './testvectors.js';
-import {
-  deserializeWitnessUtxo,
-  keyFromType,
-  parseKey,
-  serializeWitnessUtxo,
-} from '../ts_src/lib/utils.js';
 import { PSBTv2Builder } from '../ts_src/lib/index.js';
 import { fromHex, toHex } from 'uint8array-tools';
+import {
+  deserializeBip32Derivation,
+  deserializeTapBip32Derivation,
+  serializeBip32Derivation,
+  serializeTapBip32Derivation,
+} from '../ts_src/lib/utils/bip32.js';
+import {
+  serializeWitnessUtxo,
+  deserializeWitnessUtxo,
+} from '../ts_src/lib/utils/witness.js';
+import { keyFromType, parseKey } from '../ts_src/lib/utils/psbtkey.js';
+import { InputField, InputTypes } from '../ts_src/lib/fields/input.js';
+import { OutputField, OutputTypes } from '../ts_src/lib/fields/output.js';
+import { GlobalField, GlobalTypes } from '../ts_src/lib/fields/global.js';
 
 describe('Field tests', () => {
   // === Round-trip tests from vectors ===

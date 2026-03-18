@@ -2,26 +2,18 @@
  * BIP-174/370 Updater Role
  * Updates inputs and outputs with script-related data
  */
+import { MODIFIABLE_FLAGS, SIGHASH_TYPES, SighashType } from '../types.js';
+import { PsbtConstructor } from './psbtConstructor';
 import {
-  InputTypes,
-  MODIFIABLE_FLAGS,
-  OutputTypes,
-  SIGHASH_TYPES,
-  SighashType,
-} from '../typefields.js';
-import type {
   Bip32Derivation,
   TapBip32Derivation,
   TapLeafScript,
   WitnessUtxo,
-} from '../fields.js';
-import {
-  collectField,
-  InputField,
-  OutputField,
-  ValidationErrorContainer,
-} from '../fields.js';
-import { PsbtConstructor } from './psbtConstructor';
+} from '../types';
+import { ValidationErrorContainer } from '../errors';
+import { collectField } from '../fields/helper';
+import { InputField, InputTypes } from '../fields/input';
+import { OutputField, OutputTypes } from '../fields/output';
 
 /**
  * Input update data - all optional script-related fields

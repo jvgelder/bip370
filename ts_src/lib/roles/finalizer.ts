@@ -8,21 +8,17 @@
  * - Keep UTXO fields: NON_WITNESS_UTXO, WITNESS_UTXO
  * - Remove all other signing data after finalization
  */
-import { InputTypes, SCRIPT_TYPE, ScriptType } from '../typefields.js';
-import {
-  InputField,
-  type TapLeafScript,
-  ValidationErrorContainer,
-} from '../fields.js';
-import {
-  serializeWitnessStack,
-  detectScriptType,
-  encodeVarInt,
-  OPS,
-  parseKey,
-} from '../utils.js';
+import { SCRIPT_TYPE, ScriptType } from '../types.js';
+
 import { concat } from 'uint8array-tools';
 import { Signer } from './signer.js';
+import { ValidationErrorContainer } from '../errors';
+import { serializeWitnessStack } from '../utils/witness';
+import { detectScriptType, OPS } from '../utils/script';
+import { InputField, InputTypes } from '../fields/input';
+import { encodeVarInt } from '../utils/encoding';
+import { parseKey } from '../utils/psbtkey';
+import { TapLeafScript } from '../types';
 
 /**
  * Prepared finalization data (computed before mutation)

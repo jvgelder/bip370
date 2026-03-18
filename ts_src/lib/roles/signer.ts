@@ -8,23 +8,12 @@
  * - If signature does not use SIGHASH_NONE, Outputs Modifiable flag = False
  * - If signature uses SIGHASH_SINGLE, Has SIGHASH_SINGLE flag = True
  */
-import {
-  InputTypes,
-  MODIFIABLE_FLAGS,
-  SighashType,
-  SIGHASH_TYPES,
-} from '../typefields.js';
-import {
-  InputField,
-  type ValidationErrorEntry,
-  type PartialSig,
-  type TapScriptSig,
-  ValidationErrorContainer,
-} from '../fields.js';
-import { Updater } from './updater.js';
+import { MODIFIABLE_FLAGS, SighashType, SIGHASH_TYPES } from '../types.js';
 
-// Re-export types for convenience
-export type { PartialSig, TapScriptSig } from '../fields.js';
+import { Updater } from './updater.js';
+import { ValidationErrorContainer, ValidationErrorEntry } from '../errors';
+import { PartialSig, TapScriptSig } from '../types';
+import { InputField, InputTypes } from '../fields/input';
 
 /**
  * Extract sighash type from ECDSA DER signature (last byte)
