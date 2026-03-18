@@ -14,11 +14,12 @@
 // Mixins
 import { WithDeSerialization } from './features/deserialization.js';
 import { WithSerialization } from './features/serialization.js';
-import { Finalizer as PsbtRoles } from './roles/finalizer';
+import { Extractor as PsbtRoles } from './roles/extractor';
+import { WithTxSerialization } from './features/txserializer';
 import { WithCombiner } from './features/combiner';
 // Add features as mixins
-export const PSBTv2Builder = WithCombiner(
-  WithDeSerialization(WithSerialization(PsbtRoles)),
+export const PSBTv2Builder = WithTxSerialization(
+  WithCombiner(WithDeSerialization(WithSerialization(PsbtRoles))),
 );
 // === Base class =============================================================
 export { PsbtV2Base } from './psbtv2.js';
