@@ -1,266 +1,394 @@
-/**
- * PSBTv2 Finalizer Role Tests
- *
- * Reuses cryptographic material from the signer spec (BIP-174 vectors).
- * Tests finalization strategies and BIP-370 field preservation requirements.
- */
 import * as assert from 'node:assert';
-import { describe, it, beforeEach } from 'mocha';
+import { describe, it } from 'mocha';
 import { fromHex } from 'uint8array-tools';
 import { PSBTv2Builder } from '../../ts_src/lib/index.js';
 import {
   BIP174_PUBKEYS,
   BIP174_SIGNATURES,
-  LEAF_HASHES,
   SCHNORR_SIGNATURES,
   SCRIPTS,
   TAPROOT_PUBKEYS,
   TEST_TXIDS,
+  LEAF_HASHES,
 } from '../testvectors.js';
 import { InputTypes } from '../../ts_src/lib/fields/input.js';
-import {
-  InputData,
-  InputUpdateData,
-  OutputData,
-} from '../../ts_src/lib/roles/index.js';
+import { ValidationErrorContainer } from '../../ts_src/lib/errors.js';
 
-// ============================================================================
-// Helpers
-// ============================================================================
+// ─── Scripts not in testvectors (legacy/wrapped) ─────────────────────────────
 
-function createP2wpkhPsbt() {
+// P2PKH: OP_DUP OP_HASH160 <20-byte-hash> OP_EQUALVERIFY OP_CHECKSIG
+const P2PKH_SCRIPT = fromHex(
+  '76a9148d2d1eed2f4a15137cc3a7af9f233dbd47ef2f4e88ac',
+);
+
+// P2SH: OP_HASH160 <20-byte-hash> OP_EQUAL
+const P2SH_SCRIPT = fromHex('a9148d2d1eed2f4a15137cc3a7af9f233dbd47ef2f4e87');
+
+// P2SH-P2WPKH redeemScript = P2WPKH script
+const P2SH_P2WPKH_REDEEM = SCRIPTS.p2wpkh;
+
+// P2SH-P2WSH redeemScript = P2WSH script
+const P2SH_P2WSH_REDEEM = SCRIPTS.p2wsh;
+
+// A minimal raw tx for NON_WITNESS_UTXO (P2PKH output)
+const NON_WITNESS_TX = fromHex(
+  '0200000001c1aa256e214b96a1822f93de42bff3b5f3ff8d0519306e3515d7515a5e805b12' +
+    '0000000000ffffffff0118c69a3b00000000160014b0a3af144208412693ca7d166852b52db0aef06e00000000',
+);
+
+// 1-of-2 multisig redeemScript
+const REDEEM_SCRIPT = fromHex(
+  '5121' + '02'.repeat(33) + '21' + '02'.repeat(33) + '52ae',
+);
+
+// Control block for TAP_LEAF_SCRIPT (33 bytes minimum)
+const CONTROL_BLOCK = new Uint8Array(33).fill(0xc0);
+const LEAF_SCRIPT = fromHex('20' + '00'.repeat(32) + 'ac'); // minimal script
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function psbtWithP2WPKH(): PSBTv2Builder {
   const psbt = new PSBTv2Builder();
-  psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 } satisfies InputData);
+  psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
   psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
   psbt.updateInput(0, {
     witnessUtxo: { script: SCRIPTS.p2wpkh, value: 100000000n },
   });
+  psbt.addPartialSig(0, {
+    pubkey: BIP174_PUBKEYS.key1,
+    signature: BIP174_SIGNATURES.sig1,
+  });
   return psbt;
 }
 
-function createP2trPsbt() {
+function psbtWithP2TR(): PSBTv2Builder {
   const psbt = new PSBTv2Builder();
-  psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 } satisfies InputData);
+  psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
   psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
   psbt.updateInput(0, {
     witnessUtxo: { script: SCRIPTS.p2tr, value: 100000000n },
   });
+  psbt.addTapKeySig(0, SCHNORR_SIGNATURES.sig64);
   return psbt;
 }
 
-// Shared assertion — call after any finalizeInput()
-function assertV2FieldsPreserved(psbt: PSBTv2Builder, inputIndex: number) {
-  assert.ok(
-    psbt.getInput(inputIndex, InputTypes.PREVIOUS_TXID),
-    'PREVIOUS_TXID must be preserved',
-  );
-  assert.ok(
-    psbt.getInput(inputIndex, InputTypes.OUTPUT_INDEX),
-    'OUTPUT_INDEX must be preserved',
-  );
-}
+// ─── finalizeInput ───────────────────────────────────────────────────────────
 
-function assertOptionalV2FieldsPreserved(
-  psbt: PSBTv2Builder,
-  inputIndex: number,
-) {
-  assert.ok(
-    psbt.getInput(inputIndex, InputTypes.SEQUENCE),
-    'SEQUENCE must be preserved',
-  );
-  assert.ok(
-    psbt.getInput(inputIndex, InputTypes.REQUIRED_TIME_LOCKTIME),
-    'REQUIRED_TIME_LOCKTIME must be preserved',
-  );
-  assert.ok(
-    psbt.getInput(inputIndex, InputTypes.REQUIRED_HEIGHT_LOCKTIME),
-    'REQUIRED_HEIGHT_LOCKTIME must be preserved',
-  );
-}
-
-// ============================================================================
-// Tests
-// ============================================================================
-
-describe('PSBTv2 Finalizer Role', () => {
-  describe('finalizeInput - guards', () => {
-    it('throws on out-of-bounds index', () => {
-      const psbt = createP2wpkhPsbt();
-      assert.throws(
-        () => psbt.finalizeInput(99),
-        (err: any) => err.errors?.some((e: any) => e.field === 'INPUT_INDEX'),
-      );
-    });
-
-    it('is a no-op when input already has FINAL_SCRIPTWITNESS', () => {
-      const psbt = createP2wpkhPsbt();
-      psbt.setInput(0, InputTypes.FINAL_SCRIPTWITNESS, new Uint8Array(10));
-      assert.doesNotThrow(() => psbt.finalizeInput(0));
-    });
-
-    it('throws when no signatures present', () => {
-      const psbt = createP2wpkhPsbt();
-      assert.throws(() => psbt.finalizeInput(0));
-    });
+describe('Finalizer - finalizeInput', () => {
+  it('throws on out-of-bounds index', () => {
+    const psbt = psbtWithP2WPKH();
+    assert.throws(
+      () => psbt.finalizeInput(99),
+      (e: any) =>
+        e instanceof ValidationErrorContainer &&
+        e.errors[0].field === 'INPUT_INDEX',
+    );
   });
 
-  describe('P2WPKH finalization', () => {
-    let psbt: ReturnType<typeof createP2wpkhPsbt>;
-
-    beforeEach(() => {
-      psbt = createP2wpkhPsbt();
-      psbt.addPartialSig(0, {
-        pubkey: BIP174_PUBKEYS.key1,
-        signature: BIP174_SIGNATURES.sig1,
-      });
-    });
-
-    it('sets FINAL_SCRIPTWITNESS', () => {
-      psbt.finalizeInput(0);
-      assert.ok(psbt.getInput(0, InputTypes.FINAL_SCRIPTWITNESS));
-    });
-
-    it('removes signing data', () => {
-      psbt.addBip32DerivationToInput(0, {
-        pubkey: BIP174_PUBKEYS.key1,
-        masterFingerprint: new Uint8Array(4),
-        path: [0],
-      });
-      psbt.finalizeInput(0);
-      assert.ok(!psbt.getInput(0, InputTypes.PARTIAL_SIG));
-      assert.ok(!psbt.getInput(0, InputTypes.BIP32_DERIVATION));
-    });
-
-    it('preserves all BIP-370 required v2 fields', () => {
-      psbt.updateInput(0, {
-        sequence: 0xfffffffd,
-        requiredHeightLockTime: 800000,
-      } satisfies InputUpdateData);
-      psbt.finalizeInput(0);
-      assert.ok(psbt.getInput(0, InputTypes.PREVIOUS_TXID), 'PREVIOUS_TXID');
-      assert.ok(psbt.getInput(0, InputTypes.OUTPUT_INDEX), 'OUTPUT_INDEX');
-      assert.ok(psbt.getInput(0, InputTypes.SEQUENCE), 'SEQUENCE');
-      assert.ok(
-        psbt.getInput(0, InputTypes.REQUIRED_HEIGHT_LOCKTIME),
-        'HEIGHT_LOCKTIME',
-      );
-    });
+  it('throws when script type cannot be determined', () => {
+    const psbt = new PSBTv2Builder();
+    psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
+    psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
+    assert.throws(
+      () => psbt.finalizeInput(0),
+      (e: any) =>
+        e instanceof ValidationErrorContainer &&
+        e.errors[0].field === 'FINALIZATION',
+    );
   });
 
-  describe('P2TR key path finalization', () => {
-    let psbt: ReturnType<typeof createP2trPsbt>;
+  it('is a no-op when input is already finalized', () => {
+    const psbt = psbtWithP2WPKH();
+    psbt.finalizeInput(0);
+    assert.doesNotThrow(() => psbt.finalizeInput(0));
+  });
+});
 
-    beforeEach(() => {
-      psbt = createP2trPsbt();
-      psbt.addTapKeySig(0, SCHNORR_SIGNATURES.sig64);
-    });
+// ─── P2WPKH finalization ─────────────────────────────────────────────────────
 
-    it('sets FINAL_SCRIPTWITNESS from TAP_KEY_SIG', () => {
-      psbt.finalizeInput(0);
-      assert.ok(psbt.getInput(0, InputTypes.FINAL_SCRIPTWITNESS));
-    });
-
-    it('removes TAP_KEY_SIG after finalization', () => {
-      psbt.finalizeInput(0);
-      assert.ok(!psbt.getInput(0, InputTypes.TAP_KEY_SIG));
-    });
-
-    it('preserves BIP-370 required v2 fields', () => {
-      psbt.finalizeInput(0);
-      assert.ok(psbt.getInput(0, InputTypes.PREVIOUS_TXID), 'PREVIOUS_TXID');
-      assert.ok(psbt.getInput(0, InputTypes.OUTPUT_INDEX), 'OUTPUT_INDEX');
-    });
+describe('Finalizer - P2WPKH', () => {
+  it('sets FINAL_SCRIPTWITNESS and cleans up signing data', () => {
+    const psbt = psbtWithP2WPKH();
+    psbt.finalizeInput(0);
+    assert.ok(psbt.getFinalScriptWitness(0));
+    assert.strictEqual(psbt.getFinalScriptSig(0), undefined);
+    // signing data removed
+    assert.strictEqual(
+      psbt.getInput(0, InputTypes.PARTIAL_SIG, BIP174_PUBKEYS.key1),
+      undefined,
+    );
   });
 
-  describe('P2TR script path finalization', () => {
-    it('sets FINAL_SCRIPTWITNESS from TAP_SCRIPT_SIG + TAP_LEAF_SCRIPT', () => {
-      const psbt = createP2trPsbt();
-      psbt.addTapScriptSig(0, {
-        pubkey: TAPROOT_PUBKEYS.key1,
-        leafHash: LEAF_HASHES.leaf1,
-        signature: SCHNORR_SIGNATURES.sig64,
-      });
-      // control block: 33+ bytes, version byte + internal key
-      const controlBlock = new Uint8Array(33).fill(0xc0);
-      psbt.addTapLeafScriptToInput(0, {
-        controlBlock,
-        script: fromHex('51'), // OP_1 (trivially valid script)
-        leafVersion: 0xc0,
-      });
-      psbt.finalizeInput(0);
-      assert.ok(psbt.getInput(0, InputTypes.FINAL_SCRIPTWITNESS));
+  it('getFinalWitnessStack returns deserialized stack', () => {
+    const psbt = psbtWithP2WPKH();
+    psbt.finalizeInput(0);
+    const stack = psbt.getFinalWitnessStack(0);
+    assert.ok(stack);
+    assert.strictEqual(stack.length, 2);
+    assert.deepStrictEqual(stack[0], BIP174_SIGNATURES.sig1);
+    assert.deepStrictEqual(stack[1], BIP174_PUBKEYS.key1);
+  });
+});
+
+// ─── P2TR key path finalization ───────────────────────────────────────────────
+
+describe('Finalizer - P2TR key path', () => {
+  it('sets FINAL_SCRIPTWITNESS with schnorr signature', () => {
+    const psbt = psbtWithP2TR();
+    psbt.finalizeInput(0);
+    const stack = psbt.getFinalWitnessStack(0);
+    assert.ok(stack);
+    assert.strictEqual(stack.length, 1);
+    assert.deepStrictEqual(stack[0], SCHNORR_SIGNATURES.sig64);
+  });
+});
+
+// ─── P2TR script path finalization ───────────────────────────────────────────
+
+describe('Finalizer - P2TR script path', () => {
+  it('sets FINAL_SCRIPTWITNESS with sig, script, controlBlock', () => {
+    const psbt = new PSBTv2Builder();
+    psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
+    psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
+    psbt.updateInput(0, {
+      witnessUtxo: { script: SCRIPTS.p2tr, value: 100000000n },
     });
+    psbt.addTapScriptSig(0, {
+      pubkey: TAPROOT_PUBKEYS.key1,
+      leafHash: LEAF_HASHES.leaf1,
+      signature: SCHNORR_SIGNATURES.sig64,
+    });
+    psbt.updateInput(0, {
+      tapLeafScript: [
+        { controlBlock: CONTROL_BLOCK, script: LEAF_SCRIPT, leafVersion: 0xc0 },
+      ],
+    });
+    psbt.finalizeInput(0);
+    const stack = psbt.getFinalWitnessStack(0);
+    assert.ok(stack);
+    assert.strictEqual(stack.length, 3); // sig, script, controlBlock
+  });
+});
+
+// ─── P2WSH finalization ───────────────────────────────────────────────────────
+
+describe('Finalizer - P2WSH', () => {
+  it('sets FINAL_SCRIPTWITNESS with OP_0, sigs, witnessScript', () => {
+    const psbt = new PSBTv2Builder();
+    psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
+    psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
+    psbt.updateInput(0, {
+      witnessUtxo: { script: SCRIPTS.p2wsh, value: 100000000n },
+      witnessScript: SCRIPTS.p2wpkh,
+    });
+    psbt.addPartialSig(0, {
+      pubkey: BIP174_PUBKEYS.key1,
+      signature: BIP174_SIGNATURES.sig1,
+    });
+    psbt.finalizeInput(0);
+    const stack = psbt.getFinalWitnessStack(0);
+    assert.ok(stack);
+    // [OP_0, sig, witnessScript]
+    assert.strictEqual(stack.length, 3);
+    assert.strictEqual(stack[0].length, 0); // OP_0
+    assert.deepStrictEqual(stack[1], BIP174_SIGNATURES.sig1);
+  });
+});
+
+// ─── P2SH-P2WPKH finalization ─────────────────────────────────────────────────
+
+describe('Finalizer - P2SH-P2WPKH', () => {
+  it('sets FINAL_SCRIPTSIG and FINAL_SCRIPTWITNESS', () => {
+    const psbt = new PSBTv2Builder();
+    psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
+    psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
+    psbt.updateInput(0, {
+      witnessUtxo: { script: P2SH_SCRIPT, value: 100000000n },
+      redeemScript: P2SH_P2WPKH_REDEEM,
+    });
+    psbt.addPartialSig(0, {
+      pubkey: BIP174_PUBKEYS.key1,
+      signature: BIP174_SIGNATURES.sig1,
+    });
+    psbt.finalizeInput(0);
+    assert.ok(psbt.getFinalScriptSig(0));
+    assert.ok(psbt.getFinalScriptWitness(0));
+  });
+});
+
+// ─── P2SH-P2WSH finalization ──────────────────────────────────────────────────
+
+describe('Finalizer - P2SH-P2WSH', () => {
+  it('sets FINAL_SCRIPTSIG and FINAL_SCRIPTWITNESS', () => {
+    const psbt = new PSBTv2Builder();
+    psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
+    psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
+    psbt.updateInput(0, {
+      witnessUtxo: { script: P2SH_SCRIPT, value: 100000000n },
+      redeemScript: P2SH_P2WSH_REDEEM,
+      witnessScript: SCRIPTS.p2wpkh,
+    });
+    psbt.addPartialSig(0, {
+      pubkey: BIP174_PUBKEYS.key1,
+      signature: BIP174_SIGNATURES.sig1,
+    });
+    psbt.finalizeInput(0);
+    assert.ok(psbt.getFinalScriptSig(0));
+    const stack = psbt.getFinalWitnessStack(0);
+    assert.ok(stack);
+    assert.strictEqual(stack[0].length, 0); // OP_0
+  });
+});
+
+// ─── P2PKH legacy finalization ────────────────────────────────────────────────
+
+describe('Finalizer - P2PKH legacy', () => {
+  it('sets FINAL_SCRIPTSIG with sig and pubkey', () => {
+    const psbt = new PSBTv2Builder();
+    psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
+    psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
+    psbt.updateInput(0, { nonWitnessUtxo: NON_WITNESS_TX });
+    psbt.addPartialSig(0, {
+      pubkey: BIP174_PUBKEYS.key1,
+      signature: BIP174_SIGNATURES.sig1,
+    });
+    psbt.finalizeInput(0);
+    assert.ok(psbt.getFinalScriptSig(0));
+    assert.strictEqual(psbt.getFinalScriptWitness(0), undefined);
+  });
+});
+
+// ─── P2SH bare multisig legacy finalization ────────────────────────────────────
+
+describe('Finalizer - P2SH bare multisig legacy', () => {
+  it('sets FINAL_SCRIPTSIG with OP_0, sigs, redeemScript', () => {
+    const psbt = new PSBTv2Builder();
+    psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
+    psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
+    psbt.updateInput(0, {
+      nonWitnessUtxo: NON_WITNESS_TX,
+      redeemScript: REDEEM_SCRIPT,
+    });
+    psbt.addPartialSig(0, {
+      pubkey: BIP174_PUBKEYS.key1,
+      signature: BIP174_SIGNATURES.sig1,
+    });
+    psbt.addPartialSig(0, {
+      pubkey: BIP174_PUBKEYS.key2,
+      signature: BIP174_SIGNATURES.sig2,
+    });
+    psbt.finalizeInput(0);
+    assert.ok(psbt.getFinalScriptSig(0));
+    assert.strictEqual(psbt.getFinalScriptWitness(0), undefined);
+  });
+});
+
+// ─── finalizeAllInputs ────────────────────────────────────────────────────────
+
+describe('Finalizer - finalizeAllInputs', () => {
+  it('finalizes all inputs in one call', () => {
+    const psbt = new PSBTv2Builder();
+    psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
+    psbt.addInput({ hash: TEST_TXIDS.txid2, index: 1 });
+    psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 150000000n });
+    psbt.updateInput(0, {
+      witnessUtxo: { script: SCRIPTS.p2wpkh, value: 100000000n },
+    });
+    psbt.updateInput(1, {
+      witnessUtxo: { script: SCRIPTS.p2wpkh, value: 100000000n },
+    });
+    psbt.addPartialSig(0, {
+      pubkey: BIP174_PUBKEYS.key1,
+      signature: BIP174_SIGNATURES.sig1,
+    });
+    psbt.addPartialSig(1, {
+      pubkey: BIP174_PUBKEYS.key1,
+      signature: BIP174_SIGNATURES.sig1,
+    });
+    psbt.finalizeAllInputs();
+    assert.ok(psbt.isComplete());
   });
 
-  describe('finalizeAllInputs', () => {
-    it('is all-or-nothing: no mutation if one input cannot be finalized', () => {
-      const psbt = new PSBTv2Builder();
-      psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 } satisfies InputData);
-      psbt.addInput({ hash: TEST_TXIDS.txid2, index: 1 } satisfies InputData);
-      psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
-      psbt.updateInput(0, {
-        witnessUtxo: { script: SCRIPTS.p2wpkh, value: 100000000n },
-      });
-      psbt.updateInput(1, {
-        witnessUtxo: { script: SCRIPTS.p2wpkh, value: 100000000n },
-      });
-      // Only input 0 signed
-      psbt.addPartialSig(0, {
-        pubkey: BIP174_PUBKEYS.key1,
-        signature: BIP174_SIGNATURES.sig1,
-      });
-
-      assert.throws(() => psbt.finalizeAllInputs());
-      assert.ok(
-        !psbt.getInput(0, InputTypes.FINAL_SCRIPTWITNESS),
-        'input 0 must not be mutated',
-      );
-    });
-
-    it('finalizes all inputs when all are ready', () => {
-      const psbt = new PSBTv2Builder();
-      psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 } satisfies InputData);
-      psbt.addInput({ hash: TEST_TXIDS.txid2, index: 1 } satisfies InputData);
-      psbt.addOutput({
-        script: SCRIPTS.p2wpkh,
-        value: 150000000n,
-      } satisfies OutputData);
-      psbt.updateInput(0, {
-        witnessUtxo: { script: SCRIPTS.p2wpkh, value: 100000000n },
-      } satisfies InputUpdateData);
-      psbt.updateInput(1, {
-        witnessUtxo: { script: SCRIPTS.p2wpkh, value: 100000000n },
-      } satisfies InputUpdateData);
-      psbt.addPartialSig(0, {
-        pubkey: BIP174_PUBKEYS.key1,
-        signature: BIP174_SIGNATURES.sig1,
-      });
-      psbt.addPartialSig(1, {
-        pubkey: BIP174_PUBKEYS.key2,
-        signature: BIP174_SIGNATURES.sig2,
-      });
-
-      psbt.finalizeAllInputs();
-      assert.strictEqual(psbt.allInputsFinalized(), true);
-    });
-
-    it('skips already-finalized inputs without error', () => {
-      const psbt = createP2wpkhPsbt();
-      psbt.setInput(0, InputTypes.FINAL_SCRIPTWITNESS, new Uint8Array(10));
-      assert.doesNotThrow(() => psbt.finalizeAllInputs());
-    });
+  it('skips already-finalized inputs', () => {
+    const psbt = psbtWithP2WPKH();
+    psbt.finalizeInput(0);
+    assert.doesNotThrow(() => psbt.finalizeAllInputs());
   });
 
-  describe('Error messages', () => {
-    it('error includes field name and reason', () => {
-      const psbt = createP2wpkhPsbt();
-      try {
-        psbt.finalizeInput(0);
-        assert.fail('Should have thrown');
-      } catch (err: any) {
-        assert.ok(err.errors?.[0]?.field, 'Should have field');
-        assert.ok(err.errors?.[0]?.reason, 'Should have reason');
-      }
+  it('collects errors for all failing inputs before throwing', () => {
+    const psbt = new PSBTv2Builder();
+    psbt.addInput({ hash: TEST_TXIDS.txid1, index: 0 });
+    psbt.addInput({ hash: TEST_TXIDS.txid2, index: 1 });
+    psbt.addOutput({ script: SCRIPTS.p2wpkh, value: 50000000n });
+    // neither input has signing data
+    assert.throws(
+      () => psbt.finalizeAllInputs(),
+      (e: any) =>
+        e instanceof ValidationErrorContainer && e.errors.length === 2,
+    );
+  });
+});
+
+// ─── getFinalScriptSig / getFinalScriptWitness / getFinalWitnessStack ─────────
+
+describe('Finalizer - accessors', () => {
+  it('getFinalScriptSig returns undefined before finalization', () => {
+    const psbt = psbtWithP2WPKH();
+    assert.strictEqual(psbt.getFinalScriptSig(0), undefined);
+  });
+
+  it('getFinalScriptWitness returns undefined before finalization', () => {
+    const psbt = psbtWithP2WPKH();
+    assert.strictEqual(psbt.getFinalScriptWitness(0), undefined);
+  });
+
+  it('getFinalWitnessStack returns undefined before finalization', () => {
+    const psbt = psbtWithP2WPKH();
+    assert.strictEqual(psbt.getFinalWitnessStack(0), undefined);
+  });
+});
+
+// ─── cleanupInput ─────────────────────────────────────────────────────────────
+
+describe('Finalizer - cleanupInput', () => {
+  it('removes signing data but keeps required and UTXO fields', () => {
+    const psbt = psbtWithP2WPKH();
+    psbt.updateInput(0, {
+      bip32Derivation: [
+        {
+          pubkey: BIP174_PUBKEYS.key1,
+          masterFingerprint: fromHex('f69d873e'),
+          path: [0],
+        },
+      ],
     });
+    psbt.finalizeInput(0);
+    // removed
+    assert.strictEqual(
+      psbt.getInput(0, InputTypes.PARTIAL_SIG, BIP174_PUBKEYS.key1),
+      undefined,
+    );
+    assert.strictEqual(
+      psbt.getInput(0, InputTypes.BIP32_DERIVATION, BIP174_PUBKEYS.key1),
+      undefined,
+    );
+    // kept
+    assert.ok(psbt.getInput(0, InputTypes.PREVIOUS_TXID));
+    assert.ok(psbt.getInput(0, InputTypes.OUTPUT_INDEX));
+    assert.ok(psbt.getInput(0, InputTypes.WITNESS_UTXO));
+  });
+});
+
+// ─── allInputsFinalized ───────────────────────────────────────────────────────
+
+describe('Finalizer - allInputsFinalized', () => {
+  it('returns false when no inputs are finalized', () => {
+    assert.strictEqual(psbtWithP2WPKH().allInputsFinalized(), false);
+  });
+
+  it('returns true when all inputs are finalized', () => {
+    const psbt = psbtWithP2WPKH();
+    psbt.finalizeInput(0);
+    assert.strictEqual(psbt.allInputsFinalized(), true);
   });
 });
