@@ -4,7 +4,8 @@
  * Separate modules for Constructor, Updater, Signer, and Input Finalizer roles
  */
 Object.defineProperty(exports, '__esModule', { value: true });
-exports.Finalizer =
+exports.Extractor =
+  exports.Finalizer =
   exports.Signer =
   exports.Updater =
   exports.PsbtConstructor =
@@ -35,5 +36,12 @@ Object.defineProperty(exports, 'Finalizer', {
   enumerable: true,
   get: function () {
     return finalizer_js_1.Finalizer;
+  },
+});
+var extractor_js_1 = require('./extractor.cjs');
+Object.defineProperty(exports, 'Extractor', {
+  enumerable: true,
+  get: function () {
+    return extractor_js_1.Extractor;
   },
 });

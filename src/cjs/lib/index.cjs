@@ -21,12 +21,15 @@ exports.MODIFIABLE_FLAGS =
 // Mixins
 const deserialization_js_1 = require('./features/deserialization.cjs');
 const serialization_js_1 = require('./features/serialization.cjs');
-const finalizer_1 = require('./roles/finalizer');
+const extractor_1 = require('./roles/extractor');
+const txserializer_1 = require('./features/txserializer');
 const combiner_1 = require('./features/combiner');
 // Add features as mixins
-exports.PSBTv2Builder = (0, combiner_1.WithCombiner)(
-  (0, deserialization_js_1.WithDeSerialization)(
-    (0, serialization_js_1.WithSerialization)(finalizer_1.Finalizer),
+exports.PSBTv2Builder = (0, txserializer_1.WithTxSerialization)(
+  (0, combiner_1.WithCombiner)(
+    (0, deserialization_js_1.WithDeSerialization)(
+      (0, serialization_js_1.WithSerialization)(extractor_1.Extractor),
+    ),
   ),
 );
 // === Base class =============================================================

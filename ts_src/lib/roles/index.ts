@@ -15,3 +15,4 @@ export {
 } from './updater.js';
 export { Signer } from './signer.js';
 export { Finalizer, type PreparedFinalization } from './finalizer.js';
+export { Extractor } from './extractor.js';
